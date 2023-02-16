@@ -1,0 +1,135 @@
+--[[
+    Made by Rileyy#0808
+    I don't play dahood so don't ask about prediction stuff
+    I made this for fun since I heard dahoodians charge for this kinda stuff...
+]]
+
+getgenv().Settings = {
+    Keybind = 'C',
+    TargetIdentiferColor = Color3.fromRGB(248, 200, 220), --- RGB colors only
+    Prediction = 0.11934, -- play around with this
+}
+
+--// Variables
+local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
+local UserInputService = game:GetService('UserInputService')
+local LocalPlayer = Players.LocalPlayer
+local CurrentCamera = workspace.CurrentCamera
+
+local Client = {
+    TargetDesired = false
+}
+
+local Circles = {
+    Drawing.new('Circle'),
+    Drawing.new('Circle')
+}
+
+Circles[1].Color = Color3.fromRGB(248, 200, 220)
+Circles[1].Thickness = 2
+Circles[1].Visible = true 
+Circles[1].Radius = 150
+
+Circles[2].Thickness = 4
+Circles[2].Visible = true
+Circles[2].Radius = 150
+Circles[2].ZIndex = -1
+
+local Highlight = Instance.new('Highlight')
+Highlight.FillColor = Settings.TargetIdentiferColor
+Highlight.FillTransparency = 0.45
+Highlight.OutlineColor = Settings.TargetIdentiferColor
+Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+
+-- // Functions
+function IsVisible(position, model)
+    local ray = Ray.new(CurrentCamera.CFrame.p, CFrame.new(CurrentCamera.CFrame.p, position).LookVector * 10000)
+    local hit, position, normal = workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character, CurrentCamera})
+    if not hit then
+        return false
+    end
+    return hit:IsDescendantOf(model), hit, position, normal
+end
+
+-- // Script
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then 
+        Circles[1].Position = UserInputService:GetMouseLocation()
+        Circles[2].Position = UserInputService:GetMouseLocation()
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input)
+
+    if input.KeyCode == Enum.KeyCode[Settings.Keybind] then
+
+        if Client.CharacterAdded then
+            Client.CharacterAdded:Disconnect()
+        end
+
+        if Client.TargetDesired then
+            Client.Target = nil
+            Client.TargetDesired = false
+            Highlight.Enabled = false
+        else
+            local MousePosition = UserInputService:GetMouseLocation()
+            local Distance = Circles[1].Radius
+            
+            for i, player in next, Players:GetChildren() do
+
+                local Humanoid = player.Character and player.Character:FindFirstChildWhichIsA('Humanoid')
+                local HumanoidRootPart = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
+                local BodyEffects = player.Character and player.Character:FindFirstChild("BodyEffects")
+    
+                if not Humanoid or not HumanoidRootPart then
+                    continue
+                end
+    
+                if Humanoid.Health <= 0 then 
+                    continue
+                end
+    
+                if (BodyEffects and BodyEffects:FindFirstChild('K.O') and BodyEffects["K.O"].Value) or player.Character:FindFirstChild("GRABBING_CONSTRAINT") then
+                    continue
+                end
+    
+                if not IsVisible(HumanoidRootPart.Position, player.Character) then
+                    continue
+                end
+    
+                local ScreenPosition, ScreenVisible = CurrentCamera:WorldToViewportPoint(HumanoidRootPart.Position)
+                local MouseDistance = (MousePosition - Vector2.new(ScreenPosition.X, ScreenPosition.Y)).magnitude
+
+                if MouseDistance < Distance then 
+                    Distance = MouseDistance
+                    Client.Target = player
+                    Client.TargetDesired = true
+                    Highlight.Enabled = true
+                    Highlight.Adornee = player.Character 
+                    Highlight.Parent = player.Character
+                    Client.CharacterAdded = player.CharacterAdded:Connect(function(character)
+                        Highlight.Adornee = character
+                    end)
+                end
+            end
+            
+        end
+    end
+end)
+
+local namecall; namecall = hookmetamethod(game, '__namecall', function(obj, ...)
+    local args = {...}
+
+    if getnamecallmethod() == 'FireServer' and args[1] == 'UpdateMousePos' and Client.Target and Client.Target.Character then
+        args[2] = Client.Target.Character.Head.Position + (Client.Target.Character.HumanoidRootPart.Velocity * Settings.Prediction)
+    end
+
+    return namecall(obj, unpack(args))
+end)
+
+game.StarterGui:SetCore('SendNotification', {
+    Title = 'Loaded';
+    Text = 'Made by Rileyy#0808';
+    Duration = 3;
+})
