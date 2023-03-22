@@ -1,0 +1,21 @@
+local content = {
+   strings = {
+       '%s should join .gg/Hyphon :3?',
+       'I go skiiing now sorry guys with %s.',
+       'Hyphon #1 and %s agrees',
+       '.gg/Hyphon >_<',
+       'Panda Squad ON TOP.',
+       'Pandas. R rlly cool all types of pandas are',
+       'Red Panda. Orange Panda. White and black Panda. They r all cool'
+   },
+   count = 1,
+   message
+}
+
+while task.wait(1) do
+   content.count = (content.count + 1) % #content.strings
+   local players = game:GetService('Players'):GetChildren()
+   content.count = content.count == 0 and 1 or content.count
+   content.message = content.strings[content.count]:format(players[math.random(1, #players)].Name)
+   game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(content.message, 'All')
+end
