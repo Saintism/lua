@@ -1,0 +1,83 @@
+-- getgenv().settings_table = {
+--     keybind = 'E',
+--     radius = 150,
+--     hitbox = 'Head',
+--     smoothing = 0.5,
+--     vis_check = true
+-- }
+
+
+local players = game:GetService('Players')
+local runservice = game:GetService('RunService')
+local unserinputservice = game:GetService('UserInputService')
+
+local local_player = players.LocalPlayer
+local current_camera = workspace.CurrentCamera
+local aimbot = {}
+
+local fov_circle = Drawing.new('Circle')
+fov_circle.Color = Color3.new(1, 1, 1)
+fov_circle.Thickness = 1
+
+function is_visible(position, model)
+    local ray = Ray.new(current_camera.CFrame.Position, CFrame.new(current_camera.CFrame.Position, position).LookVector * 150000)
+    local hit_part, hit_position = workspace:FindPartOnRayWithIgnoreList(ray, {local_player.Character, current_camera})
+
+    if not hit_part then
+        return false
+    end
+
+    return hit_part:IsDescendantOf(model), hit_position
+end
+
+runservice.PreRender:Connect(function()
+    local mouse_pos = unserinputservice:GetMouseLocation()
+    fov_circle.Position = mouse_pos
+    fov_circle.Radius = settings_table.radius
+
+    aimbot.target = nil
+    aimbot.target_part = nil
+    aimbot.target_distance = settings_table.radius
+    settings_table.smoothing = settings_table.smoothing == 0 and 0.1 or settings_table.smoothing
+
+    for i, player in next, players:GetChildren() do
+        local humanoid = player.Character and player.Character:FindFirstChildWhichIsA('Humanoid')
+        local rootpart = humanoid and player.Character:FindFirstChild('HumanoidRootPart')
+
+        if not rootpart or humanoid.Health <= 0 or player == local_player then
+            continue
+        end
+
+        local screen_pos, screen_vis = current_camera:WorldToViewportPoint(rootpart.Position)
+        screen_pos = Vector2.new(screen_pos.X, screen_pos.Y)
+        local mouse_distance = (mouse_pos - screen_pos).magnitude
+
+        if not screen_vis then
+            continue
+        end
+
+        if not player.Character:FindFirstChild(settings_table.hitbox) then
+            continue
+        end
+
+        if settings_table.vis_check and not is_visible(rootpart.Position, player.Character) then
+            continue
+        end
+
+        if mouse_distance < aimbot.target_distance then
+            aimbot.target = player 
+            aimbot.target_distance = mouse_distance
+            aimbot.target_part = player.Character[settings_table.hitbox]
+        end
+    end
+
+    if aimbot.target ~= nil then
+        local cframe = CFrame.new(current_camera.CFrame.Position, aimbot.target_part.Position)
+        cframe = current_camera.CFrame:Lerp(cframe, 1 - (settings_table.smoothing - 0.5) / 20)
+
+        if unserinputservice:IsKeyDown(settings_table.keybind) then
+            current_camera.CFrame = cframe
+        end
+    end
+
+end)
