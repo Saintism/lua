@@ -1,0 +1,13 @@
+local AllowedString = ('>_<^_^UwU'):split('') -- You can change >_<^_^UwU to anything
+
+function RandomString(length)
+   local str = ''
+   for i = 1, length do
+       str = str .. AllowedString[math.random(1, #AllowedString)]
+   end
+
+   return str
+end
+
+--// Example usage
+print(RandomString(99))
